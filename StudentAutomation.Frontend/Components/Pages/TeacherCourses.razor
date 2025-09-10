@@ -1,0 +1,198 @@
+@page "/teacher-courses"
+@using StudentAutomation.Frontend.Models
+@using StudentAutomation.Frontend.Services
+@inject IApiService ApiService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>My Courses - Teacher</PageTitle>
+
+@{
+    Console.WriteLine("DEBUG: TeacherCourses page is rendering");
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-chalkboard-teacher me-2"></i>My Courses</h2>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>@errorMessage
+                </div>
+            }
+
+            @if (!isInitialized)
+            {
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (teacherCourses.Count == 0)
+            {
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle me-2"></i>
+                    You are not assigned to any courses yet.
+                </div>
+            }
+            else
+            {
+                <div class="row">
+                    @foreach (var course in teacherCourses)
+                    {
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-header bg-success text-white">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-book me-2"></i>@course.CourseName
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">
+                                        <strong>Course Code:</strong> @course.CourseCode<br>
+                                        <strong>Credits:</strong> @course.Credits<br>
+                                        <strong>Status:</strong> 
+                                        <span class="badge @GetStatusBadgeClass(course.Status)">
+                                            @course.Status
+                                        </span>
+                                    </p>
+                                    @if (!string.IsNullOrEmpty(course.Description))
+                                    {
+                                        <p class="card-text">
+                                            <small class="text-muted">@course.Description</small>
+                                        </p>
+                                    }
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            Created: @course.CreatedAt.ToString("MMM dd, yyyy")
+                                        </small>
+                                    </p>
+                                </div>
+                                <div class="card-footer bg-light">
+                                    <div class="d-flex justify-content-between flex-wrap gap-2">
+                                        <button class="btn btn-primary btn-sm" @onclick="() => ManageStudents(course.Id)">
+                                            <i class="fas fa-users me-1"></i>Students
+                                        </button>
+                                        <button class="btn btn-success btn-sm" @onclick="() => ManageGrades(course.Id)">
+                                            <i class="fas fa-chart-line me-1"></i>Grades
+                                        </button>
+                                        <button class="btn btn-info btn-sm" @onclick="() => ManageAttendance(course.Id)">
+                                            <i class="fas fa-calendar-check me-1"></i>Attendance
+                                        </button>
+                                        <button class="btn btn-outline-secondary btn-sm" @onclick="() => UpdateCourseStatus(course.Id, CourseStatus.Active)">
+                                            <i class="fas fa-cog me-1"></i>Manage
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<CourseDto> teacherCourses = new();
+    private bool isInitialized = false;
+    private string errorMessage = string.Empty;
+
+    protected override Task OnInitializedAsync()
+    {
+        Console.WriteLine("DEBUG: OnInitializedAsync called");
+        isInitialized = true;
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Console.WriteLine("DEBUG: OnAfterRenderAsync called");
+            try
+            {
+                Console.WriteLine("DEBUG: Loading courses from API directly");
+                await LoadTeacherCourses();
+                Console.WriteLine($"DEBUG: API courses loaded, count: {teacherCourses.Count}");
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DEBUG: Exception in OnAfterRenderAsync: {ex.Message}");
+                errorMessage = $"Error loading courses: {ex.Message}";
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task LoadTeacherCourses()
+    {
+        try
+        {
+            Console.WriteLine("DEBUG: Calling ApiService.GetTeacherCoursesAsync()");
+            teacherCourses = await ApiService.GetTeacherCoursesAsync();
+            Console.WriteLine($"DEBUG: API returned {teacherCourses?.Count ?? 0} courses");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Console.WriteLine($"DEBUG: Unauthorized access: {ex.Message}");
+            errorMessage = "Please log in as a teacher to view courses.";
+            Navigation.NavigateTo("/login");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG: Exception in LoadTeacherCourses: {ex.Message}");
+            errorMessage = $"Error loading courses: {ex.Message}";
+            teacherCourses = new List<CourseDto>();
+        }
+    }
+
+    private string GetStatusBadgeClass(CourseStatus status)
+    {
+        return status switch
+        {
+            CourseStatus.Active => "bg-success",
+            CourseStatus.Completed => "bg-primary",
+            CourseStatus.Inactive => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private void ManageStudents(int courseId)
+    {
+        Navigation.NavigateTo($"/course/{courseId}/students");
+    }
+
+    private void ManageGrades(int courseId)
+    {
+        Navigation.NavigateTo($"/course/{courseId}/grades");
+    }
+
+    private void ManageAttendance(int courseId)
+    {
+        Navigation.NavigateTo($"/course/{courseId}/attendance");
+    }
+
+    private async Task UpdateCourseStatus(int courseId, CourseStatus newStatus)
+    {
+        try
+        {
+            // This would call an API to update course status
+            // For now, just show a message
+            await JSRuntime.InvokeVoidAsync("alert", $"Course status would be updated to {newStatus}");
+            await LoadTeacherCourses();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating course status: {ex.Message}";
+        }
+    }
+}

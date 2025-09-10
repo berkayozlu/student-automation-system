@@ -1,0 +1,435 @@
+@page "/reports"
+@using StudentAutomation.Frontend.Models
+@using StudentAutomation.Frontend.Services
+@inject IAuthService AuthService
+@inject IApiService ApiService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Reports - Student Automation System</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 mb-0">System Reports</h1>
+            <p class="text-muted">View comprehensive system analytics and reports</p>
+        </div>
+    </div>
+
+    @if (!isInitialized)
+    {
+        <div class="d-flex justify-content-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>@errorMessage
+        </div>
+    }
+    else
+    {
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@totalStudents</h4>
+                                <p class="card-text">Total Students</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-user-graduate fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@totalTeachers</h4>
+                                <p class="card-text">Total Teachers</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-chalkboard-teacher fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@totalCourses</h4>
+                                <p class="card-text">Total Courses</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-book fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@totalEnrollments</h4>
+                                <p class="card-text">Total Enrollments</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-clipboard-list fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Sections -->
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>Course Enrollment Statistics
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (courses.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Course</th>
+                                            <th>Enrolled</th>
+                                            <th>Capacity</th>
+                                            <th>%</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var course in courses.Take(5))
+                                        {
+                                            var percentage = 75; // Mock data for now
+                                            <tr>
+                                                <td>@course.CourseCode</td>
+                                                <td>@course.EnrolledStudentsCount</td>
+                                                <td>100</td>
+                                                <td>
+                                                    <div class="progress" style="height: 20px;">
+                                                        <div class="progress-bar @GetProgressBarClass(percentage)" 
+                                                             style="width: @percentage%">
+                                                            @percentage%
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted">No course data available</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-graduation-cap me-2"></i>Grade Distribution
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-3">
+                                <div class="border rounded p-3 mb-2">
+                                    <h4 class="text-success">@gradeStats.ACount</h4>
+                                    <small class="text-muted">A Grades</small>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="border rounded p-3 mb-2">
+                                    <h4 class="text-info">@gradeStats.BCount</h4>
+                                    <small class="text-muted">B Grades</small>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="border rounded p-3 mb-2">
+                                    <h4 class="text-warning">@gradeStats.CCount</h4>
+                                    <small class="text-muted">C Grades</small>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="border rounded p-3 mb-2">
+                                    <h4 class="text-danger">@gradeStats.FCount</h4>
+                                    <small class="text-muted">F Grades</small>
+                                </div>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="text-center">
+                            <h5>Average GPA: <span class="text-primary">@gradeStats.AverageGPA.ToString("F2")</span></h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-calendar-check me-2"></i>Recent Activity
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline">
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-primary"></div>
+                                <div class="timeline-content">
+                                    <h6 class="timeline-title">New Student Registration</h6>
+                                    <p class="timeline-text">5 new students registered today</p>
+                                    <small class="text-muted">2 hours ago</small>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-success"></div>
+                                <div class="timeline-content">
+                                    <h6 class="timeline-title">Course Completion</h6>
+                                    <p class="timeline-text">CS101 course completed by 25 students</p>
+                                    <small class="text-muted">1 day ago</small>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-info"></div>
+                                <div class="timeline-content">
+                                    <h6 class="timeline-title">New Course Added</h6>
+                                    <p class="timeline-text">Advanced Database Systems course created</p>
+                                    <small class="text-muted">3 days ago</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Options -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-download me-2"></i>Export Reports
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 mb-2">
+                                <button class="btn btn-outline-primary w-100" @onclick="ExportStudentReport">
+                                    <i class="fas fa-file-excel me-2"></i>Student Report
+                                </button>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <button class="btn btn-outline-success w-100" @onclick="ExportGradeReport">
+                                    <i class="fas fa-file-pdf me-2"></i>Grade Report
+                                </button>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <button class="btn btn-outline-info w-100" @onclick="ExportAttendanceReport">
+                                    <i class="fas fa-file-csv me-2"></i>Attendance Report
+                                </button>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <button class="btn btn-outline-warning w-100" @onclick="ExportFullReport">
+                                    <i class="fas fa-file-archive me-2"></i>Full Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+}
+
+.timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: -21px;
+    top: 20px;
+    height: calc(100% - 10px);
+    width: 2px;
+    background-color: #dee2e6;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -25px;
+    top: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.timeline-content {
+    padding-left: 20px;
+}
+
+.timeline-title {
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.timeline-text {
+    margin-bottom: 5px;
+    color: #6c757d;
+}
+</style>
+
+@code {
+    private bool isInitialized = false;
+    private string errorMessage = string.Empty;
+    
+    private int totalStudents = 0;
+    private int totalTeachers = 0;
+    private int totalCourses = 0;
+    private int totalEnrollments = 0;
+    
+    private List<CourseDto> courses = new();
+    private GradeStats gradeStats = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                if (!await AuthService.IsAuthenticatedAsync())
+                {
+                    Navigation.NavigateTo("/login");
+                    return;
+                }
+
+                var currentUser = await AuthService.GetCurrentUserAsync();
+                if (currentUser == null || !currentUser.Roles.Contains("Admin"))
+                {
+                    Navigation.NavigateTo("/");
+                    return;
+                }
+
+                await LoadReportData();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error loading reports: {ex.Message}";
+            }
+            finally
+            {
+                isInitialized = true;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task LoadReportData()
+    {
+        try
+        {
+            errorMessage = string.Empty;
+            
+            // Load basic statistics
+            var students = await ApiService.GetStudentsAsync();
+            var teachers = await ApiService.GetTeachersAsync();
+            courses = await ApiService.GetCoursesAsync();
+            
+            totalStudents = students.Count;
+            totalTeachers = teachers.Count;
+            totalCourses = courses.Count;
+            totalEnrollments = courses.Sum(c => c.EnrolledStudentsCount);
+            
+            // Calculate grade statistics (mock data for now)
+            gradeStats = new GradeStats
+            {
+                ACount = 45,
+                BCount = 78,
+                CCount = 32,
+                FCount = 8,
+                AverageGPA = 3.2
+            };
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading report data: {ex.Message}";
+        }
+    }
+
+    private string GetProgressBarClass(int percentage)
+    {
+        return percentage switch
+        {
+            >= 90 => "bg-danger",
+            >= 70 => "bg-warning",
+            >= 50 => "bg-info",
+            _ => "bg-success"
+        };
+    }
+
+    private async Task ExportStudentReport()
+    {
+        await JSRuntime.InvokeVoidAsync("alert", "Student report export functionality will be implemented.");
+    }
+
+    private async Task ExportGradeReport()
+    {
+        await JSRuntime.InvokeVoidAsync("alert", "Grade report export functionality will be implemented.");
+    }
+
+    private async Task ExportAttendanceReport()
+    {
+        await JSRuntime.InvokeVoidAsync("alert", "Attendance report export functionality will be implemented.");
+    }
+
+    private async Task ExportFullReport()
+    {
+        await JSRuntime.InvokeVoidAsync("alert", "Full report export functionality will be implemented.");
+    }
+
+    public class GradeStats
+    {
+        public int ACount { get; set; }
+        public int BCount { get; set; }
+        public int CCount { get; set; }
+        public int FCount { get; set; }
+        public double AverageGPA { get; set; }
+    }
+}

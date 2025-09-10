@@ -1,0 +1,128 @@
+@page "/login"
+@using StudentAutomation.Frontend.Models
+@using StudentAutomation.Frontend.Services
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Login - Student Automation System</PageTitle>
+
+<div class="container-fluid vh-100 d-flex align-items-center justify-content-center bg-light">
+    <div class="row w-100">
+        <div class="col-md-6 col-lg-4 mx-auto">
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold text-primary">Student Automation</h2>
+                        <p class="text-muted">Sign in to your account</p>
+                    </div>
+
+                    <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+                        <DataAnnotationsValidator />
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                @errorMessage
+                            </div>
+                        }
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <InputText id="email" class="form-control" @bind-Value="loginModel.Email" placeholder="Enter your email" />
+                            <ValidationMessage For="@(() => loginModel.Email)" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password" placeholder="Enter your password" />
+                            <ValidationMessage For="@(() => loginModel.Password)" class="text-danger" />
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Signing in...</span>
+                                }
+                                else
+                                {
+                                    <span>Sign In</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+
+                    <div class="text-center">
+                        <p class="text-muted">Don't have an account? <a href="/register" class="text-primary">Register here</a></p>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <small class="text-muted">
+                            <strong>Test Accounts:</strong><br>
+                            Admin: admin@studentautomation.com / Admin123!<br>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginDto loginModel = new();
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Check if user is already authenticated
+                if (await AuthService.IsAuthenticatedAsync())
+                {
+                    Navigation.NavigateTo("/");
+                }
+            }
+            catch
+            {
+                // Ignore errors during authentication check on login page
+            }
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+
+            var result = await AuthService.LoginAsync(loginModel);
+
+            if (result.Success)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Login successful!");
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = result.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

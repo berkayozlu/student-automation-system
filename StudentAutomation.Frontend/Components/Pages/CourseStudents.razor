@@ -1,0 +1,501 @@
+@page "/course/{courseId:int}/students"
+@using StudentAutomation.Frontend.Models
+@using StudentAutomation.Frontend.Services
+@inject IApiService ApiService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Course Students</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-users me-2"></i>Course Students</h2>
+                    @if (course != null)
+                    {
+                        <p class="text-muted mb-0">@course.CourseName (@course.CourseCode)</p>
+                    }
+                </div>
+                <div>
+                    <button class="btn btn-primary me-2" @onclick="ShowAddStudentModal">
+                        <i class="fas fa-user-plus me-1"></i>Add Student
+                    </button>
+                    <button class="btn btn-secondary" @onclick="GoBack">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Courses
+                    </button>
+                </div>
+            </div>
+
+            @if (!isInitialized)
+            {
+                <div class="d-flex justify-content-center align-items-center" style="height: 300px;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>@errorMessage
+                </div>
+            }
+            else if (students == null || !students.Any())
+            {
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No students are enrolled in this course yet.
+                </div>
+            }
+            else
+            {
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-graduation-cap me-2"></i>
+                            Enrolled Students (@students.Count)
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Enrollment Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var student in students)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong>@student.StudentNumber</strong>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                        @student.FirstName.Substring(0, 1).ToUpper()
+                                                    </div>
+                                                    <div>
+                                                        <strong>@student.FirstName @student.LastName</strong>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>@student.Email</td>
+                                            <td>@student.EnrollmentDate.ToString("MMM dd, yyyy")</td>
+                                            <td>
+                                                <span class="badge @GetEnrollmentStatusBadgeClass(student.EnrollmentStatus)">
+                                                    @student.EnrollmentStatus
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button class="btn btn-sm btn-outline-primary" 
+                                                            @onclick="() => ViewStudentProfile(student.Id)"
+                                                            title="View Profile">
+                                                        <i class="fas fa-user"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-success" 
+                                                            @onclick="() => ViewStudentGrades(student.Id)"
+                                                            title="View Grades">
+                                                        <i class="fas fa-chart-line"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-info" 
+                                                            @onclick="() => ViewStudentAttendance(student.Id)"
+                                                            title="View Attendance">
+                                                        <i class="fas fa-calendar-check"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Total Students</h5>
+                                    <h3 class="text-primary">@students.Count</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Active Enrollments</h5>
+                                    <h3 class="text-success">@students.Count(s => s.EnrollmentStatus == EnrollmentStatus.Active)</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Completed</h5>
+                                    <h3 class="text-info">@students.Count(s => s.EnrollmentStatus == EnrollmentStatus.Completed)</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Add Student Modal -->
+@if (showAddStudentModal)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-user-plus me-2"></i>Add Student to Course
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseAddStudentModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(addStudentMessage))
+                    {
+                        <div class="alert @(addStudentSuccess ? "alert-success" : "alert-danger")" role="alert">
+                            <i class="fas @(addStudentSuccess ? "fa-check-circle" : "fa-exclamation-triangle") me-2"></i>
+                            @addStudentMessage
+                        </div>
+                    }
+
+                    @if (isLoadingAvailableStudents)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading available students...</span>
+                            </div>
+                            <p class="mt-2">Loading available students...</p>
+                        </div>
+                    }
+                    else if (availableStudents == null || !availableStudents.Any())
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            No students available to add to this course. All students may already be enrolled.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Search Students:</label>
+                            <input type="text" class="form-control" @bind="studentSearchTerm" @oninput="FilterStudents" 
+                                   placeholder="Search by name, email, or student number..." />
+                        </div>
+
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-hover">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Select</th>
+                                        <th>Student Number</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var student in filteredStudents)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <input type="checkbox" class="form-check-input" 
+                                                       @onchange="@((e) => ToggleStudentSelection(student.Id, (bool)e.Value!))" />
+                                            </td>
+                                            <td><strong>@student.StudentNumber</strong></td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                        @student.FirstName.Substring(0, 1).ToUpper()
+                                                    </div>
+                                                    @student.FirstName @student.LastName
+                                                </div>
+                                            </td>
+                                            <td>@student.Email</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        @if (selectedStudentIds.Any())
+                        {
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                @selectedStudentIds.Count student(s) selected for enrollment.
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseAddStudentModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="AddSelectedStudents" 
+                            disabled="@(!selectedStudentIds.Any() || isAddingStudents)">
+                        @if (isAddingStudents)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        <i class="fas fa-user-plus me-1"></i>
+                        Add Selected Students (@selectedStudentIds.Count)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    [Parameter] public int CourseId { get; set; }
+    
+    private List<CourseStudentDto> students = new();
+    private CourseDto? course;
+    private bool isInitialized = false;
+    private string errorMessage = string.Empty;
+
+    // Add Student Modal variables
+    private bool showAddStudentModal = false;
+    private List<StudentDto> availableStudents = new();
+    private List<StudentDto> filteredStudents = new();
+    private HashSet<int> selectedStudentIds = new();
+    private string studentSearchTerm = string.Empty;
+    private bool isLoadingAvailableStudents = false;
+    private bool isAddingStudents = false;
+    private string addStudentMessage = string.Empty;
+    private bool addStudentSuccess = false;
+
+    protected override Task OnInitializedAsync()
+    {
+        Console.WriteLine($"DEBUG: CourseStudents OnInitializedAsync called for course {CourseId}");
+        isInitialized = true;
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Console.WriteLine($"DEBUG: CourseStudents OnAfterRenderAsync called for course {CourseId}");
+            try
+            {
+                await LoadCourseInfo();
+                await LoadCourseStudents();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DEBUG: Exception in CourseStudents OnAfterRenderAsync: {ex.Message}");
+                errorMessage = $"Error loading course students: {ex.Message}";
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task LoadCourseInfo()
+    {
+        try
+        {
+            Console.WriteLine($"DEBUG: Loading course info for course {CourseId}");
+            course = await ApiService.GetCourseByIdAsync(CourseId);
+            Console.WriteLine($"DEBUG: Course loaded: {course?.CourseName}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG: Exception loading course info: {ex.Message}");
+        }
+    }
+
+    private async Task LoadCourseStudents()
+    {
+        try
+        {
+            Console.WriteLine($"DEBUG: Loading students for course {CourseId}");
+            students = await ApiService.GetCourseStudentsAsync(CourseId);
+            Console.WriteLine($"DEBUG: Loaded {students?.Count ?? 0} students");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG: Exception loading course students: {ex.Message}");
+            errorMessage = $"Error loading students: {ex.Message}";
+            students = new List<CourseStudentDto>();
+        }
+    }
+
+    private string GetEnrollmentStatusBadgeClass(EnrollmentStatus status)
+    {
+        return status switch
+        {
+            EnrollmentStatus.Active => "bg-success",
+            EnrollmentStatus.Completed => "bg-primary",
+            EnrollmentStatus.Dropped => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/teacher-courses");
+    }
+
+    private void ViewStudentProfile(int studentId)
+    {
+        Navigation.NavigateTo($"/student/{studentId}/profile");
+    }
+
+    private void ViewStudentGrades(int studentId)
+    {
+        Navigation.NavigateTo($"/course/{CourseId}/student/{studentId}/grades");
+    }
+
+    private void ViewStudentAttendance(int studentId)
+    {
+        Navigation.NavigateTo($"/course/{CourseId}/student/{studentId}/attendance");
+    }
+
+    // Add Student Modal Methods
+    private async Task ShowAddStudentModal()
+    {
+        showAddStudentModal = true;
+        addStudentMessage = string.Empty;
+        selectedStudentIds.Clear();
+        studentSearchTerm = string.Empty;
+        
+        await LoadAvailableStudents();
+    }
+
+    private void CloseAddStudentModal()
+    {
+        showAddStudentModal = false;
+        selectedStudentIds.Clear();
+        addStudentMessage = string.Empty;
+        studentSearchTerm = string.Empty;
+    }
+
+    private async Task LoadAvailableStudents()
+    {
+        try
+        {
+            isLoadingAvailableStudents = true;
+            Console.WriteLine($"DEBUG: Loading available students for course {CourseId}");
+            
+            availableStudents = await ApiService.GetAvailableStudentsForCourseAsync(CourseId);
+            filteredStudents = availableStudents.ToList();
+            
+            Console.WriteLine($"DEBUG: Found {availableStudents.Count} available students");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG: Exception loading available students: {ex.Message}");
+            addStudentMessage = $"Error loading available students: {ex.Message}";
+            addStudentSuccess = false;
+        }
+        finally
+        {
+            isLoadingAvailableStudents = false;
+            StateHasChanged();
+        }
+    }
+
+    private void FilterStudents()
+    {
+        if (string.IsNullOrWhiteSpace(studentSearchTerm))
+        {
+            filteredStudents = availableStudents.ToList();
+        }
+        else
+        {
+            var searchTerm = studentSearchTerm.ToLower();
+            filteredStudents = availableStudents.Where(s =>
+                s.FirstName.ToLower().Contains(searchTerm) ||
+                s.LastName.ToLower().Contains(searchTerm) ||
+                s.Email.ToLower().Contains(searchTerm) ||
+                s.StudentNumber.ToLower().Contains(searchTerm)
+            ).ToList();
+        }
+        StateHasChanged();
+    }
+
+    private void ToggleStudentSelection(int studentId, bool isSelected)
+    {
+        if (isSelected)
+        {
+            selectedStudentIds.Add(studentId);
+        }
+        else
+        {
+            selectedStudentIds.Remove(studentId);
+        }
+        StateHasChanged();
+    }
+
+    private async Task AddSelectedStudents()
+    {
+        if (!selectedStudentIds.Any()) return;
+
+        try
+        {
+            isAddingStudents = true;
+            addStudentMessage = string.Empty;
+            
+            Console.WriteLine($"DEBUG: Adding {selectedStudentIds.Count} students to course {CourseId}");
+            
+            var result = await ApiService.AddStudentsToCourseAsync(CourseId, selectedStudentIds.ToList());
+            
+            if (result)
+            {
+                addStudentMessage = $"Successfully added {selectedStudentIds.Count} student(s) to the course.";
+                addStudentSuccess = true;
+                
+                // Refresh the student list
+                await LoadCourseStudents();
+                
+                // Clear selections and close modal after a delay
+                await Task.Delay(2000);
+                CloseAddStudentModal();
+            }
+            else
+            {
+                addStudentMessage = "Failed to add students to the course. Please try again.";
+                addStudentSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG: Exception adding students to course: {ex.Message}");
+            addStudentMessage = $"Error adding students: {ex.Message}";
+            addStudentSuccess = false;
+        }
+        finally
+        {
+            isAddingStudents = false;
+            StateHasChanged();
+        }
+    }
+}
+
+<style>
+    .avatar-sm {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+        font-weight: bold;
+    }
+</style>

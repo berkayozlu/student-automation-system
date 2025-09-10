@@ -1,0 +1,207 @@
+@page "/register"
+@using StudentAutomation.Frontend.Models
+@using StudentAutomation.Frontend.Services
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Register - Student Automation System</PageTitle>
+
+<div class="container-fluid vh-100 d-flex align-items-center justify-content-center bg-light">
+    <div class="row w-100">
+        <div class="col-md-8 col-lg-6 mx-auto">
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold text-primary">Create Account</h2>
+                        <p class="text-muted">Register for Student Automation System</p>
+                    </div>
+
+                    <EditForm Model="registerModel" OnValidSubmit="HandleRegister">
+                        <DataAnnotationsValidator />
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                @errorMessage
+                            </div>
+                        }
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="firstName" class="form-label">First Name</label>
+                                <InputText id="firstName" class="form-control" @bind-Value="registerModel.FirstName" />
+                                <ValidationMessage For="@(() => registerModel.FirstName)" class="text-danger" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="lastName" class="form-label">Last Name</label>
+                                <InputText id="lastName" class="form-control" @bind-Value="registerModel.LastName" />
+                                <ValidationMessage For="@(() => registerModel.LastName)" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <InputText id="email" class="form-control" @bind-Value="registerModel.Email" />
+                            <ValidationMessage For="@(() => registerModel.Email)" class="text-danger" />
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <InputText id="password" type="password" class="form-control" @bind-Value="registerModel.Password" />
+                                <ValidationMessage For="@(() => registerModel.Password)" class="text-danger" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="confirmPassword" class="form-label">Confirm Password</label>
+                                <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="registerModel.ConfirmPassword" />
+                                <ValidationMessage For="@(() => registerModel.ConfirmPassword)" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="dateOfBirth" class="form-label">Date of Birth</label>
+                                <InputDate id="dateOfBirth" class="form-control" @bind-Value="registerModel.DateOfBirth" />
+                                <ValidationMessage For="@(() => registerModel.DateOfBirth)" class="text-danger" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="role" class="form-label">Role</label>
+                                <InputSelect id="role" class="form-select" @bind-Value="registerModel.Role" @onchange="OnRoleChanged">
+                                    <option value="">Select Role</option>
+                                    <option value="Student">Student</option>
+                                    <option value="Teacher">Teacher</option>
+                                    <option value="Admin">Admin</option>
+                                </InputSelect>
+                                <ValidationMessage For="@(() => registerModel.Role)" class="text-danger" />
+                            </div>
+                        </div>
+
+                        @if (registerModel.Role == "Student")
+                        {
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="studentNumber" class="form-label">Student Number</label>
+                                    <InputText id="studentNumber" class="form-control" @bind-Value="registerModel.StudentNumber" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="year" class="form-label">Year</label>
+                                    <InputNumber id="year" class="form-control" @bind-Value="registerModel.Year" />
+                                </div>
+                            </div>
+                        }
+
+                        @if (registerModel.Role == "Teacher")
+                        {
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="employeeNumber" class="form-label">Employee Number</label>
+                                    <InputText id="employeeNumber" class="form-control" @bind-Value="registerModel.EmployeeNumber" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="title" class="form-label">Title</label>
+                                    <InputText id="title" class="form-control" @bind-Value="registerModel.Title" />
+                                </div>
+                            </div>
+                        }
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="department" class="form-label">Department</label>
+                                <InputText id="department" class="form-control" @bind-Value="registerModel.Department" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="phoneNumber" class="form-label">Phone Number</label>
+                                <InputText id="phoneNumber" class="form-control" @bind-Value="registerModel.PhoneNumber" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Address</label>
+                            <InputTextArea id="address" class="form-control" @bind-Value="registerModel.Address" rows="2" />
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Creating Account...</span>
+                                }
+                                else
+                                {
+                                    <span>Create Account</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+
+                    <div class="text-center">
+                        <p class="text-muted">Already have an account? <a href="/login" class="text-primary">Sign in here</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterDto registerModel = new() { DateOfBirth = DateTime.Today.AddYears(-18) };
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Check if user is already authenticated
+                if (await AuthService.IsAuthenticatedAsync())
+                {
+                    Navigation.NavigateTo("/");
+                }
+            }
+            catch
+            {
+                // Ignore errors during authentication check on register page
+            }
+        }
+    }
+
+    private void OnRoleChanged(ChangeEventArgs e)
+    {
+        registerModel.Role = e.Value?.ToString() ?? string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task HandleRegister()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+
+            var result = await AuthService.RegisterAsync(registerModel);
+
+            if (result.Success)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Registration successful!");
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = result.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

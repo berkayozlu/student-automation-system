@@ -1,0 +1,339 @@
+@page "/courses"
+@using StudentAutomation.Frontend.Models
+@using StudentAutomation.Frontend.Services
+@inject IAuthService AuthService
+@inject IApiService ApiService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Courses - Student Automation System</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 mb-0">Courses Management</h1>
+            <p class="text-muted">Manage all courses in the system</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="AddNewCourse">
+                <i class="fas fa-plus me-2"></i>Add New Course
+            </button>
+        </div>
+    </div>
+
+    @if (!isInitialized)
+    {
+        <div class="d-flex justify-content-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>@errorMessage
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-12">
+                @if (courses.Any())
+                {
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Course Code</th>
+                                            <th>Name</th>
+                                            <th>Credits</th>
+                                            <th>Teacher</th>
+                                            <th>Status</th>
+                                            <th>Schedule</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var course in courses)
+                                        {
+                                            <tr>
+                                                <td><strong>@course.CourseCode</strong></td>
+                                                <td>@course.CourseName</td>
+                                                <td>@course.Credits</td>
+                                                <td>@course.TeacherName</td>
+                                                <td>
+                                                    <span class="badge @GetStatusBadgeClass(course.Status)">
+                                                        @course.Status
+                                                    </span>
+                                                </td>
+                                                <td>@(course.Description ?? "N/A")</td>
+                                                <td>
+                                                    <div class="btn-group" role="group">
+                                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewCourse(course.Id)">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => EditCourse(course.Id)">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-info" @onclick="() => ManageEnrollments(course.Id)">
+                                                            <i class="fas fa-users"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteCourse(course.Id)">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No courses found</h5>
+                        <p class="text-muted">Add courses to get started.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Add Course Modal -->
+@if (showAddModal)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Course</h5>
+                    <button type="button" class="btn-close" @onclick="CloseAddModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="newCourse" OnValidSubmit="HandleAddCourse">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" />
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Course Code</label>
+                                    <InputText @bind-Value="newCourse.CourseCode" class="form-control" placeholder="e.g., CS101" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Course Name</label>
+                                    <InputText @bind-Value="newCourse.CourseName" class="form-control" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Description</label>
+                                    <InputTextArea @bind-Value="newCourse.Description" class="form-control" rows="3" />
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Credits</label>
+                                            <InputNumber @bind-Value="newCourse.Credits" class="form-control" />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Teacher</label>
+                                            <InputSelect @bind-Value="newCourse.TeacherId" class="form-select">
+                                                <option value="0">Select Teacher</option>
+                                                @foreach (var teacher in teachers)
+                                                {
+                                                    <option value="@teacher.Id">@teacher.FirstName @teacher.LastName</option>
+                                                }
+                                            </InputSelect>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseAddModal">Cancel</button>
+                            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                                @if (isSubmitting)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                Add Course
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private List<CourseDto> courses = new();
+    private List<TeacherDto> teachers = new();
+    private bool isInitialized = false;
+    private string errorMessage = string.Empty;
+    private bool showAddModal = false;
+    private bool isSubmitting = false;
+    private CreateCourseDto newCourse = new() 
+    { 
+        Credits = 3,
+        TeacherId = 0
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                if (!await AuthService.IsAuthenticatedAsync())
+                {
+                    Navigation.NavigateTo("/login");
+                    return;
+                }
+
+                var currentUser = await AuthService.GetCurrentUserAsync();
+                if (currentUser == null || (!currentUser.Roles.Contains("Admin") && !currentUser.Roles.Contains("Teacher")))
+                {
+                    Navigation.NavigateTo("/");
+                    return;
+                }
+
+                await LoadData();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error loading page: {ex.Message}";
+            }
+            finally
+            {
+                isInitialized = true;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            errorMessage = string.Empty;
+            courses = await ApiService.GetCoursesAsync();
+            teachers = await ApiService.GetTeachersAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading data: {ex.Message}";
+        }
+    }
+
+    private string GetStatusBadgeClass(CourseStatus status)
+    {
+        return status switch
+        {
+            CourseStatus.Active => "bg-success",
+            CourseStatus.Inactive => "bg-secondary",
+            CourseStatus.Completed => "bg-primary",
+            _ => "bg-secondary"
+        };
+    }
+
+    private void AddNewCourse()
+    {
+        newCourse = new CreateCourseDto 
+        { 
+            Credits = 3,
+            TeacherId = 0
+        };
+        showAddModal = true;
+    }
+
+    private void CloseAddModal()
+    {
+        showAddModal = false;
+        newCourse = new CreateCourseDto 
+        { 
+            Credits = 3,
+            TeacherId = 0
+        };
+    }
+
+    private async Task HandleAddCourse()
+    {
+        try
+        {
+            isSubmitting = true;
+            errorMessage = string.Empty;
+
+            var result = await ApiService.CreateCourseAsync(newCourse);
+            
+            if (result != null)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Course added successfully!");
+                showAddModal = false;
+                newCourse = new() { Credits = 3, TeacherId = 0 };
+                await LoadData();
+            }
+            else
+            {
+                errorMessage = "Failed to add course. Please check all fields and try again.";
+            }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error adding course: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void ViewCourse(int courseId)
+    {
+        Navigation.NavigateTo($"/courses/{courseId}");
+    }
+
+    private void EditCourse(int courseId)
+    {
+        Navigation.NavigateTo($"/courses/{courseId}/edit");
+    }
+
+    private void ManageEnrollments(int courseId)
+    {
+        Navigation.NavigateTo($"/courses/{courseId}/enrollments");
+    }
+
+    private async Task DeleteCourse(int courseId)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this course?"))
+        {
+            try
+            {
+                // Implementation for delete would go here
+                await LoadData();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting course: {ex.Message}";
+            }
+        }
+    }
+}

@@ -1,0 +1,130 @@
+@using StudentAutomation.Frontend.Services
+@inject IAuthService AuthService
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">
+            <i class="fas fa-graduation-cap me-2"></i>Student Automation
+        </a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <i class="fas fa-home me-2"></i> Home
+            </NavLink>
+        </div>
+
+        @if (userRole == "Student")
+        {
+            <!-- Student Links -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="my-profile">
+                    <i class="fas fa-user me-2"></i> My Profile
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="my-courses">
+                    <i class="fas fa-book me-2"></i> My Courses
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="my-grades">
+                    <i class="fas fa-chart-line me-2"></i> My Grades
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="my-attendance">
+                    <i class="fas fa-calendar-check me-2"></i> My Attendance
+                </NavLink>
+            </div>
+        }
+
+        @if (userRole == "Teacher")
+        {
+            <!-- Teacher Links -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="my-profile">
+                    <i class="fas fa-user me-2"></i> My Profile
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="teacher-courses">
+                    <i class="fas fa-chalkboard-teacher me-2"></i> My Courses
+                </NavLink>
+            </div>
+        }
+
+        @if (userRole == "Admin")
+        {
+            <!-- Admin Links -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="students">
+                    <i class="fas fa-users me-2"></i> Students
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="teachers">
+                    <i class="fas fa-user-tie me-2"></i> Teachers
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="courses">
+                    <i class="fas fa-book-open me-2"></i> Courses
+                </NavLink>
+            </div>
+        }
+
+        <!-- Authentication -->
+        @if (string.IsNullOrEmpty(userRole))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="login">
+                    <i class="fas fa-sign-in-alt me-2"></i> Login
+                </NavLink>
+            </div>
+        }
+        else
+        {
+            <div class="nav-item px-3">
+                <button class="nav-link btn btn-link text-start w-100" @onclick="Logout">
+                    <i class="fas fa-sign-out-alt me-2"></i> Logout
+                </button>
+            </div>
+        }
+    </nav>
+</div>
+
+@code {
+    private string userRole = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            userRole = await AuthService.GetUserRoleAsync();
+        }
+        catch
+        {
+            userRole = "";
+        }
+    }
+
+    private async Task Logout()
+    {
+        await AuthService.LogoutAsync();
+        userRole = "";
+        StateHasChanged();
+    }
+}
+

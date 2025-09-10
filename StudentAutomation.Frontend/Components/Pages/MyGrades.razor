@@ -1,0 +1,287 @@
+@page "/my-grades"
+@page "/my-grades/{courseId:int}"
+@using StudentAutomation.Frontend.Models
+@using StudentAutomation.Frontend.Services
+@inject IApiService ApiService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>My Grades</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-chart-line me-2"></i>My Grades</h2>
+                @if (CourseId.HasValue)
+                {
+                    <button class="btn btn-outline-secondary" @onclick="@(() => Navigation.NavigateTo("/my-grades"))">
+                        <i class="fas fa-arrow-left me-1"></i>View All Grades
+                    </button>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>@errorMessage
+                </div>
+            }
+
+            @if (!isInitialized)
+            {
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (grades.Count == 0)
+            {
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle me-2"></i>
+                    @if (CourseId.HasValue)
+                    {
+                        <text>No grades available for this course yet.</text>
+                    }
+                    else
+                    {
+                        <text>No grades available yet.</text>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-graduation-cap me-2"></i>
+                            @if (CourseId.HasValue)
+                            {
+                                <text>Grades for @(grades.FirstOrDefault()?.CourseName ?? "Course")</text>
+                            }
+                            else
+                            {
+                                <text>All Grades</text>
+                            }
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        @if (!CourseId.HasValue)
+                                        {
+                                            <th>Course</th>
+                                        }
+                                        <th>Grade</th>
+                                        <th>Letter Grade</th>
+                                        <th>Comments</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var grade in grades.OrderByDescending(g => g.CreatedAt))
+                                    {
+                                        <tr>
+                                            @if (!CourseId.HasValue)
+                                            {
+                                                <td>
+                                                    <div>
+                                                        <strong>@grade.CourseName</strong><br>
+                                                        <small class="text-muted">@grade.CourseCode</small>
+                                                    </div>
+                                                </td>
+                                            }
+                                            <td>
+                                                <span class="badge @GetGradeBadgeClass(grade.Score) fs-6">
+                                                    @grade.Score.ToString("F1")
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetLetterGradeBadgeClass(GetLetterGrade(grade.Score)) fs-6">
+                                                    @GetLetterGrade(grade.Score)
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(grade.Comments))
+                                                {
+                                                    <span>@grade.Comments</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">No comments</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    @grade.CreatedAt.ToString("MMM dd, yyyy")
+                                                </small>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    @if (!CourseId.HasValue && grades.Any())
+                    {
+                        <div class="card-footer bg-light">
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <h6 class="text-muted mb-1">Overall GPA</h6>
+                                    <h4 class="text-primary mb-0">@CalculateGPA().ToString("F2")</h4>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="text-muted mb-1">Total Courses</h6>
+                                    <h4 class="text-info mb-0">@grades.GroupBy(g => g.CourseId).Count()</h4>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="text-muted mb-1">Average Grade</h6>
+                                    <h4 class="text-success mb-0">@grades.Average(g => g.Score).ToString("F1")</h4>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int? CourseId { get; set; }
+
+    private List<GradeDto> grades = new();
+    private bool isInitialized = false;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("DEBUG MyGrades: OnInitializedAsync called");
+        try
+        {
+            Console.WriteLine("DEBUG MyGrades: Starting initialization");
+            await LoadGrades();
+            Console.WriteLine("DEBUG MyGrades: Grades loaded successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG MyGrades: Error loading grades: {ex.Message}");
+            Console.WriteLine($"DEBUG MyGrades: Error stack trace: {ex.StackTrace}");
+            errorMessage = $"Error loading grades: {ex.Message}";
+        }
+        finally
+        {
+            isInitialized = true;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (isInitialized)
+        {
+            await LoadGrades();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadGrades()
+    {
+        try
+        {
+            Console.WriteLine("DEBUG MyGrades: LoadGrades called");
+            if (CourseId.HasValue)
+            {
+                Console.WriteLine($"DEBUG MyGrades: Loading grades for course {CourseId.Value}");
+                grades = await ApiService.GetMyGradesByCourseAsync(CourseId.Value);
+            }
+            else
+            {
+                Console.WriteLine("DEBUG MyGrades: Loading all grades");
+                grades = await ApiService.GetMyGradesAsync();
+            }
+            Console.WriteLine($"DEBUG MyGrades: LoadGrades completed with {grades.Count} grades");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG MyGrades: LoadGrades exception: {ex.Message}");
+            errorMessage = $"Error loading grades: {ex.Message}";
+        }
+    }
+
+    private string GetGradeBadgeClass(decimal grade)
+    {
+        return grade switch
+        {
+            >= 90 => "bg-success",
+            >= 80 => "bg-primary",
+            >= 70 => "bg-warning",
+            >= 60 => "bg-info",
+            _ => "bg-danger"
+        };
+    }
+
+    private string GetLetterGrade(decimal grade)
+    {
+        return grade switch
+        {
+            >= 97 => "A+",
+            >= 93 => "A",
+            >= 90 => "A-",
+            >= 87 => "B+",
+            >= 83 => "B",
+            >= 80 => "B-",
+            >= 77 => "C+",
+            >= 73 => "C",
+            >= 70 => "C-",
+            >= 67 => "D+",
+            >= 63 => "D",
+            >= 60 => "D-",
+            _ => "F"
+        };
+    }
+
+    private string GetLetterGradeBadgeClass(string letterGrade)
+    {
+        return letterGrade switch
+        {
+            "A+" or "A" or "A-" => "bg-success",
+            "B+" or "B" or "B-" => "bg-primary",
+            "C+" or "C" or "C-" => "bg-warning",
+            "D+" or "D" or "D-" => "bg-info",
+            _ => "bg-danger"
+        };
+    }
+
+    private decimal CalculateGPA()
+    {
+        if (!grades.Any()) return 0;
+
+        var gradePoints = grades.Select(g => GetGradePoints(g.Score)).ToList();
+        return gradePoints.Average();
+    }
+
+    private decimal GetGradePoints(decimal grade)
+    {
+        return grade switch
+        {
+            >= 97 => 4.0m,
+            >= 93 => 4.0m,
+            >= 90 => 3.7m,
+            >= 87 => 3.3m,
+            >= 83 => 3.0m,
+            >= 80 => 2.7m,
+            >= 77 => 2.3m,
+            >= 73 => 2.0m,
+            >= 70 => 1.7m,
+            >= 67 => 1.3m,
+            >= 63 => 1.0m,
+            >= 60 => 0.7m,
+            _ => 0.0m
+        };
+    }
+}

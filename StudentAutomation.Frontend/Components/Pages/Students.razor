@@ -1,0 +1,176 @@
+@page "/students"
+@using StudentAutomation.Frontend.Models
+@using StudentAutomation.Frontend.Services
+@inject IAuthService AuthService
+@inject IApiService ApiService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Students - Student Automation System</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 mb-0">Students Management</h1>
+            <p class="text-muted">Manage all students in the system</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="AddNewStudent">
+                <i class="fas fa-plus me-2"></i>Add New Student
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            @errorMessage
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                @if (students.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Student Number</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Department</th>
+                                    <th>Year</th>
+                                    <th>Enrollment Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var student in students)
+                                {
+                                    <tr>
+                                        <td>
+                                            <strong>@student.StudentNumber</strong>
+                                        </td>
+                                        <td>@student.FirstName @student.LastName</td>
+                                        <td>@student.Email</td>
+                                        <td>@(student.Department ?? "N/A")</td>
+                                        <td>@(student.Year?.ToString() ?? "N/A")</td>
+                                        <td>@student.EnrollmentDate.ToString("MMM dd, yyyy")</td>
+                                        <td>
+                                            @if (student.IsActive)
+                                            {
+                                                <span class="badge bg-success">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Inactive</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button class="btn btn-outline-primary" @onclick="() => ViewStudent(student.Id)">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info" @onclick="() => ViewGrades(student.Id)">
+                                                    <i class="fas fa-graduation-cap"></i>
+                                                </button>
+                                                <button class="btn btn-outline-warning" @onclick="() => ViewCourses(student.Id)">
+                                                    <i class="fas fa-book"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No students found</h5>
+                        <p class="text-muted">Add students to get started.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<StudentDto> students = new();
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!await AuthService.IsAuthenticatedAsync())
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            var currentUser = await AuthService.GetCurrentUserAsync();
+            if (currentUser == null || (!currentUser.Roles.Contains("Admin") && !currentUser.Roles.Contains("Teacher")))
+            {
+                Navigation.NavigateTo("/");
+                return;
+            }
+
+            await LoadStudents();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadStudents()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            students = await ApiService.GetStudentsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading students: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ViewStudent(int studentId)
+    {
+        Navigation.NavigateTo($"/students/{studentId}");
+    }
+
+    private void ViewGrades(int studentId)
+    {
+        Navigation.NavigateTo($"/students/{studentId}/grades");
+    }
+
+    private void ViewCourses(int studentId)
+    {
+        Navigation.NavigateTo($"/students/{studentId}/courses");
+    }
+
+    private void AddNewStudent()
+    {
+        Navigation.NavigateTo("/add-student");
+    }
+}

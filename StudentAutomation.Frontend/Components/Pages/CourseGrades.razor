@@ -1,0 +1,411 @@
+@page "/course/{courseId:int}/grades"
+@using StudentAutomation.Frontend.Models
+@using StudentAutomation.Frontend.Services
+@inject IApiService ApiService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Course Grades - Teacher</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-chart-line me-2"></i>Course Grades</h2>
+                    @if (course != null)
+                    {
+                        <p class="text-muted mb-0">@course.CourseName (@course.CourseCode)</p>
+                    }
+                </div>
+                <div>
+                    <button class="btn btn-success me-2" @onclick="ShowAddGradeModal">
+                        <i class="fas fa-plus me-1"></i>Add Grade
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="GoBack">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Courses
+                    </button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>@errorMessage
+                </div>
+            }
+
+            @if (!isInitialized)
+            {
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (grades.Count == 0)
+            {
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No grades recorded for this course yet.
+                </div>
+            }
+            else
+            {
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-graduation-cap me-2"></i>
+                            Grades for @(grades.FirstOrDefault()?.CourseName ?? "Course")
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>Student Number</th>
+                                        <th>Exam Type</th>
+                                        <th>Grade</th>
+                                        <th>Comments</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var grade in grades.OrderBy(g => g.StudentName).ThenByDescending(g => g.CreatedAt))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong>@grade.StudentName</strong>
+                                            </td>
+                                            <td>
+                                                <span class="text-muted">@grade.StudentNumber</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">@grade.ExamType</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetGradeBadgeClass(grade.Score) fs-6">
+                                                    @grade.Score.ToString("F1")
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(grade.Comments))
+                                                {
+                                                    <span>@grade.Comments</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">No comments</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    @grade.CreatedAt.ToString("MMM dd, yyyy")
+                                                </small>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => EditGrade(grade)">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteGrade(grade.Id)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Add Grade Modal -->
+@if (showAddGradeModal)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-plus me-2"></i>Add Grade
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseAddGradeModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(addGradeMessage))
+                    {
+                        <div class="alert @(addGradeSuccess ? "alert-success" : "alert-danger")" role="alert">
+                            <i class="fas @(addGradeSuccess ? "fa-check-circle" : "fa-exclamation-triangle") me-2"></i>
+                            @addGradeMessage
+                        </div>
+                    }
+
+                    @if (isLoadingStudents)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading students...</span>
+                            </div>
+                            <p class="mt-2">Loading enrolled students...</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <form>
+                            <div class="mb-3">
+                                <label class="form-label">Student</label>
+                                <select class="form-select" @bind="newGrade.StudentId">
+                                    <option value="0">Select Student</option>
+                                    @foreach (var student in courseStudents)
+                                    {
+                                        <option value="@student.Id">@student.FirstName @student.LastName (@student.StudentNumber)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Exam Type</label>
+                                <input type="text" class="form-control" @bind="newGrade.ExamType" placeholder="e.g., Midterm, Final, Quiz 1" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Score</label>
+                                <input type="number" class="form-control" @bind="newGrade.Score" min="0" max="100" step="0.1" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Comments (Optional)</label>
+                                <textarea class="form-control" @bind="newGrade.Comments" rows="3" placeholder="Additional comments about the grade..."></textarea>
+                            </div>
+                        </form>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseAddGradeModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="HandleAddGrade" 
+                            disabled="@(isAddingGrade || courseStudents.Count == 0)">
+                        @if (isAddingGrade)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        <i class="fas fa-plus me-1"></i>
+                        Add Grade
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    [Parameter] public int CourseId { get; set; }
+
+    private List<GradeDto> grades = new();
+    private List<CourseStudentDto> courseStudents = new();
+    private CourseDto? course;
+    private CreateGradeDto newGrade = new();
+    private bool isInitialized = false;
+    private string errorMessage = string.Empty;
+
+    // Add Grade Modal variables
+    private bool showAddGradeModal = false;
+    private bool isLoadingStudents = false;
+    private bool isAddingGrade = false;
+    private string addGradeMessage = string.Empty;
+    private bool addGradeSuccess = false;
+
+    protected override Task OnInitializedAsync()
+    {
+        Console.WriteLine($"DEBUG: CourseGrades OnInitializedAsync called for course {CourseId}");
+        isInitialized = true;
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Console.WriteLine($"DEBUG: CourseGrades OnAfterRenderAsync called for course {CourseId}");
+            try
+            {
+                await LoadCourseInfo();
+                await LoadData();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DEBUG: Exception in CourseGrades OnAfterRenderAsync: {ex.Message}");
+                errorMessage = $"Error loading course grades: {ex.Message}";
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task LoadCourseInfo()
+    {
+        try
+        {
+            Console.WriteLine($"DEBUG: Loading course info for course {CourseId}");
+            course = await ApiService.GetCourseByIdAsync(CourseId);
+            Console.WriteLine($"DEBUG: Course loaded: {course?.CourseName}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG: Exception loading course info: {ex.Message}");
+        }
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            Console.WriteLine($"DEBUG: Loading grades and students for course {CourseId}");
+            grades = await ApiService.GetGradesByCourseAsync(CourseId);
+            courseStudents = await ApiService.GetCourseStudentsAsync(CourseId);
+            Console.WriteLine($"DEBUG: Loaded {grades.Count} grades and {courseStudents.Count} students");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG: Exception loading data: {ex.Message}");
+            errorMessage = $"Error loading data: {ex.Message}";
+        }
+    }
+
+    private string GetGradeBadgeClass(decimal grade)
+    {
+        return grade switch
+        {
+            >= 90 => "bg-success",
+            >= 80 => "bg-primary",
+            >= 70 => "bg-warning",
+            >= 60 => "bg-info",
+            _ => "bg-danger"
+        };
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/teacher-courses");
+    }
+
+    private async Task ShowAddGradeModal()
+    {
+        showAddGradeModal = true;
+        addGradeMessage = string.Empty;
+        newGrade = new CreateGradeDto { CourseId = CourseId };
+        
+        if (courseStudents.Count == 0)
+        {
+            isLoadingStudents = true;
+            await LoadData();
+            isLoadingStudents = false;
+        }
+        StateHasChanged();
+    }
+
+    private void CloseAddGradeModal()
+    {
+        showAddGradeModal = false;
+        addGradeMessage = string.Empty;
+        newGrade = new CreateGradeDto();
+    }
+
+    private async Task HandleAddGrade()
+    {
+        addGradeMessage = string.Empty;
+        isAddingGrade = true;
+
+        if (newGrade.StudentId == 0)
+        {
+            addGradeMessage = "Please select a student.";
+            addGradeSuccess = false;
+            isAddingGrade = false;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newGrade.ExamType))
+        {
+            addGradeMessage = "Please enter an exam type.";
+            addGradeSuccess = false;
+            isAddingGrade = false;
+            return;
+        }
+
+        if (newGrade.Score < 0 || newGrade.Score > 100)
+        {
+            addGradeMessage = "Score must be between 0 and 100.";
+            addGradeSuccess = false;
+            return;
+        }
+
+        try
+        {
+            Console.WriteLine($"DEBUG Frontend: Starting grade creation - Student: {newGrade.StudentId}, Course: {CourseId}, Score: {newGrade.Score}");
+            var result = await ApiService.CreateGradeAsync(newGrade);
+            
+            Console.WriteLine($"DEBUG Frontend: API call completed");
+            Console.WriteLine($"DEBUG Frontend: Result is null: {result == null}");
+            
+            if (result != null)
+            {
+                Console.WriteLine($"DEBUG Frontend: Success - Grade ID: {result.Id}");
+                addGradeMessage = "Grade added successfully!";
+                addGradeSuccess = true;
+                
+                // Refresh the grades list
+                await LoadData();
+                
+                // Close modal after a delay
+                await Task.Delay(2000);
+                CloseAddGradeModal();
+            }
+            else
+            {
+                Console.WriteLine($"DEBUG Frontend: Result was null - showing error");
+                addGradeMessage = "Failed to add grade. Please try again.";
+                addGradeSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG Frontend: Exception in HandleAddGrade: {ex.Message}");
+            addGradeMessage = "Failed to add grade. Please try again.";
+            addGradeSuccess = false;
+        }
+
+        isAddingGrade = false;
+        StateHasChanged();
+    }
+
+    private void EditGrade(GradeDto grade)
+    {
+        // Navigate to edit page or show edit modal
+        // For now, just show an alert
+        JSRuntime.InvokeVoidAsync("alert", $"Edit functionality for grade {grade.Id} would be implemented here");
+    }
+
+    private async Task DeleteGrade(int gradeId)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this grade?");
+        if (confirmed)
+        {
+            try
+            {
+                // Delete API call would go here
+                await JSRuntime.InvokeVoidAsync("alert", "Delete functionality would be implemented here");
+                await LoadData();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting grade: {ex.Message}";
+            }
+        }
+    }
+}
