@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: student_automation_db
+    environment:
+      POSTGRES_DB: StudentAutomationDB
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - student_automation_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./StudentAutomation.Backend
+      dockerfile: Dockerfile
+    container_name: student_automation_backend
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=StudentAutomationDB;Username=postgres;Password=postgres123
+    ports:
+      - "5169:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - student_automation_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./StudentAutomation.Frontend
+      dockerfile: Dockerfile
+    container_name: student_automation_frontend
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ApiSettings__BaseUrl=http://backend:8080
+    ports:
+      - "5013:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - student_automation_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+
+networks:
+  student_automation_network:
+    driver: bridge
