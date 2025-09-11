@@ -58,6 +58,7 @@ git clone <repository-url>
 ```bash
 docker-compose up -d
 ```
+## 3. Uygulama frontend'i 5013 portunda ayağa kalkar.
 
 ## Test Kullanıcıları
 
