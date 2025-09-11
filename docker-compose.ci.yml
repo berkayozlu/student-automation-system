@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  postgres-test:
+    image: postgres:15
+    container_name: student_automation_db_test
+    environment:
+      POSTGRES_DB: StudentAutomationDB_Test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    networks:
+      - test_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend-test:
+    build:
+      context: ./StudentAutomation.Backend
+      dockerfile: Dockerfile
+      target: build
+    container_name: student_automation_backend_test
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Testing
+      - ConnectionStrings__DefaultConnection=Host=postgres-test;Database=StudentAutomationDB_Test;Username=postgres;Password=postgres123
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    networks:
+      - test_network
+    command: ["dotnet", "test", "--no-build", "--configuration", "Release", "--logger", "trx", "--results-directory", "/app/TestResults/"]
+
+volumes:
+  postgres_test_data:
+
+networks:
+  test_network:
+    driver: bridge

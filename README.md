@@ -147,15 +147,38 @@ Kayıt sayfasından "Student" rolü seçerek oluşturabilirsiniz.
 - Async/await pattern
 - Exception handling
 
+## CI/CD Pipeline
+
+Bu proje GitHub Actions ile otomatik CI/CD pipeline'ına sahiptir:
+
+### Özellikler
+- **Otomatik Test**: Her push ve PR'da testler çalışır
+- **Docker Build**: Otomatik Docker image oluşturma ve GitHub Container Registry'ye push
+- **Code Quality**: Kod formatı ve kalite kontrolleri
+- **Security Scan**: Güvenlik taraması
+- **Multi-Environment**: Staging ve Production ortamları
+- **Dependency Updates**: Haftalık otomatik paket güncellemeleri
+
+### Workflow Dosyaları
+- `.github/workflows/ci-cd.yml` - Ana CI/CD pipeline
+- `.github/workflows/pr-check.yml` - PR doğrulama
+- `.github/workflows/dependency-update.yml` - Paket güncellemeleri
+
+### Kurulum
+1. GitHub repository'nizde Actions sekmesini etkinleştirin
+2. Container Registry için gerekli izinleri verin
+3. Staging ve Production environment'larını oluşturun
+
 ## Bonus Özellikler
 
 - Docker containerization
--  Swagger API documentation
--  Responsive Bootstrap UI
--  Real-time Blazor Server
--  Comprehensive error handling
--  Role-based dashboards
--  Bulk operations (attendance)
--  Data validation
--  Clean architecture
+- Swagger API documentation
+- Responsive Bootstrap UI
+- Real-time Blazor Server
+- Comprehensive error handling
+- Role-based dashboards
+- Bulk operations (attendance)
+- Data validation
+- Clean architecture
+- **GitHub Actions CI/CD Pipeline**
 

@@ -1,0 +1,70 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    # Her pazartesi saat 09:00'da çalışır (UTC)
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    name: Update NuGet Packages
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Install dotnet outdated tool
+      run: dotnet tool install --global dotnet-outdated-tool
+
+    - name: Check for outdated packages
+      run: |
+        echo "Checking Backend packages..."
+        dotnet outdated StudentAutomation.Backend/StudentAutomation.Backend.csproj
+        echo "Checking Frontend packages..."
+        dotnet outdated StudentAutomation.Frontend/StudentAutomation.Frontend.csproj
+
+    - name: Update packages (minor versions only)
+      run: |
+        dotnet add StudentAutomation.Backend/StudentAutomation.Backend.csproj package Microsoft.AspNetCore.Authentication.JwtBearer
+        dotnet add StudentAutomation.Backend/StudentAutomation.Backend.csproj package Microsoft.AspNetCore.Identity.EntityFrameworkCore
+        dotnet add StudentAutomation.Backend/StudentAutomation.Backend.csproj package Microsoft.AspNetCore.OpenApi
+        dotnet add StudentAutomation.Backend/StudentAutomation.Backend.csproj package Microsoft.EntityFrameworkCore.Design
+        dotnet add StudentAutomation.Backend/StudentAutomation.Backend.csproj package Npgsql.EntityFrameworkCore.PostgreSQL
+        dotnet add StudentAutomation.Backend/StudentAutomation.Backend.csproj package Swashbuckle.AspNetCore
+        
+        dotnet add StudentAutomation.Frontend/StudentAutomation.Frontend.csproj package Blazored.LocalStorage
+        dotnet add StudentAutomation.Frontend/StudentAutomation.Frontend.csproj package System.Net.Http.Json
+
+    - name: Build and test after updates
+      run: |
+        dotnet restore
+        dotnet build --configuration Release
+        dotnet test --configuration Release --no-build
+
+    - name: Create Pull Request
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: 'chore: NuGet paketleri güncellendi'
+        title: 'Otomatik NuGet Paket Güncellemesi'
+        body: |
+          ## NuGet Paket Güncellemesi 📦
+          
+          Bu PR otomatik olarak oluşturulmuştur ve aşağıdaki değişiklikleri içerir:
+          
+          - NuGet paketlerinin minor versiyonları güncellendi
+          - Tüm testler başarıyla geçti
+          - Build işlemi başarılı
+          
+          Lütfen değişiklikleri gözden geçirin ve onaylayın.
+        branch: feature/dependency-updates
+        delete-branch: true
