@@ -16,7 +16,7 @@ namespace StudentAutomation.Frontend.Services
         Task<List<TeacherDto>> GetTeachersAsync();
         Task<TeacherDto?> GetTeacherAsync(int id);
         Task<List<CourseDto>> GetTeacherCoursesAsync(int teacherId);
-    Task<List<CourseDto>> GetTeacherCoursesAsync();
+        Task<List<CourseDto>> GetTeacherCoursesAsync();
         Task<TeacherDto?> CreateTeacherAsync(CreateTeacherDto createTeacherDto);
 
         // Courses
@@ -32,18 +32,18 @@ namespace StudentAutomation.Frontend.Services
         Task<List<GradeDto>> GetGradesByCourseAsync(int courseId);
 
         // Course Enrollments
-    Task<List<CourseEnrollmentDto>> GetMyCoursesAsync();
-    Task<List<CourseEnrollmentDto>> GetCourseEnrollmentsAsync(int courseId);
-    
-    // Student Profile
-    Task<StudentDto?> GetMyProfileAsync();
-    
-    // Teacher Profile
-    Task<TeacherDto?> GetMyTeacherProfileAsync();
-    
-    // Student Grades
-    Task<List<GradeDto>> GetMyGradesAsync();
-    Task<List<GradeDto>> GetMyGradesByCourseAsync(int courseId);
+        Task<List<CourseEnrollmentDto>> GetMyCoursesAsync();
+        Task<List<CourseEnrollmentDto>> GetCourseEnrollmentsAsync(int courseId);
+
+        // Student Profile
+        Task<StudentDto?> GetMyProfileAsync();
+
+        // Teacher Profile
+        Task<TeacherDto?> GetMyTeacherProfileAsync();
+
+        // Student Grades
+        Task<List<GradeDto>> GetMyGradesAsync();
+        Task<List<GradeDto>> GetMyGradesByCourseAsync(int courseId);
 
         // Attendance
         Task<List<AttendanceDto>> GetAttendanceAsync();

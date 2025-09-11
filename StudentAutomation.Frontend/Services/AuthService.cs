@@ -49,7 +49,7 @@ namespace StudentAutomation.Frontend.Services
             {
                 var response = await _httpClient.PostAsJsonAsync("api/auth/register", registerDto);
                 var responseContent = await response.Content.ReadAsStringAsync();
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     return new AuthResponseDto { Success = false, Message = $"Registration failed: {response.StatusCode} - Response: {responseContent}" };
@@ -93,7 +93,7 @@ namespace StudentAutomation.Frontend.Services
 
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
                 var response = await _httpClient.GetAsync("api/auth/profile");
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>();

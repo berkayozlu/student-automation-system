@@ -26,7 +26,7 @@ namespace StudentAutomation.Backend.Controllers
             }
 
             var result = await _authService.LoginAsync(loginDto);
-            
+
             if (!result.Success)
             {
                 return BadRequest(result);
@@ -44,7 +44,7 @@ namespace StudentAutomation.Backend.Controllers
             }
 
             var result = await _authService.RegisterAsync(registerDto);
-            
+
             if (!result.Success)
             {
                 return BadRequest(result);
@@ -58,14 +58,14 @@ namespace StudentAutomation.Backend.Controllers
         public async Task<ActionResult<AuthResponseDto>> GetProfile()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            
+
             if (string.IsNullOrEmpty(userId))
             {
                 return Unauthorized();
             }
 
             var result = await _authService.GetUserProfileAsync(userId);
-            
+
             if (!result.Success)
             {
                 return NotFound(result);
@@ -79,7 +79,7 @@ namespace StudentAutomation.Backend.Controllers
         public async Task<ActionResult<List<string>>> GetUserRoles()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            
+
             if (string.IsNullOrEmpty(userId))
             {
                 return Unauthorized();

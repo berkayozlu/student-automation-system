@@ -73,8 +73,14 @@ jobs:
 
     - name: Code Quality Analysis
       run: |
-        dotnet format --verify-no-changes --verbosity diagnostic StudentAutomation.Backend/StudentAutomation.Backend.csproj
-        dotnet format --verify-no-changes --verbosity diagnostic StudentAutomation.Frontend/StudentAutomation.Frontend.csproj
+        # Format code first, then verify
+        dotnet format StudentAutomation.Backend/StudentAutomation.Backend.csproj
+        dotnet format StudentAutomation.Frontend/StudentAutomation.Frontend.csproj
+        # Check if any changes were made
+        if ! git diff --exit-code; then
+          echo "Code formatting changes detected. Please run 'dotnet format' locally and commit the changes."
+          exit 1
+        fi
 
   security-scan:
     name: Security Scan

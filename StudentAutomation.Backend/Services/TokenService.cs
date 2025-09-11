@@ -21,7 +21,7 @@ namespace StudentAutomation.Backend.Services
         public async Task<string> GenerateTokenAsync(ApplicationUser user)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            
+
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id),

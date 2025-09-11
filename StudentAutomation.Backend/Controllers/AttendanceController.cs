@@ -212,7 +212,7 @@ namespace StudentAutomation.Backend.Controllers
                     Console.WriteLine("DEBUG Backend: Teacher not found by UserId, trying email lookup");
                     var userEmail = User.FindFirst(ClaimTypes.Email)?.Value;
                     Console.WriteLine($"DEBUG Backend: User email: {userEmail}");
-                    
+
                     if (!string.IsNullOrEmpty(userEmail))
                     {
                         teacher = await _context.Teachers
@@ -240,77 +240,77 @@ namespace StudentAutomation.Backend.Controllers
                 Console.WriteLine($"DEBUG Backend: Course found: {course.CourseName} ({course.CourseCode})");
 
                 // Convert date to UTC to avoid PostgreSQL timezone issues
-                var utcDate = bulkAttendanceDto.Date.Kind == DateTimeKind.Local 
-                    ? bulkAttendanceDto.Date.ToUniversalTime() 
+                var utcDate = bulkAttendanceDto.Date.Kind == DateTimeKind.Local
+                    ? bulkAttendanceDto.Date.ToUniversalTime()
                     : bulkAttendanceDto.Date;
-                
+
                 Console.WriteLine($"DEBUG Backend: Original date: {bulkAttendanceDto.Date} (Kind: {bulkAttendanceDto.Date.Kind})");
                 Console.WriteLine($"DEBUG Backend: UTC date: {utcDate} (Kind: {utcDate.Kind})");
 
-            var attendanceRecords = new List<Attendance>();
-            var attendanceDtos = new List<AttendanceDto>();
+                var attendanceRecords = new List<Attendance>();
+                var attendanceDtos = new List<AttendanceDto>();
 
-            foreach (var studentAttendance in bulkAttendanceDto.StudentAttendances)
-            {
-                // Check if student exists and is enrolled in the course
-                var enrollment = await _context.CourseEnrollments
-                    .Include(ce => ce.Student)
-                    .ThenInclude(s => s.User)
-                    .FirstOrDefaultAsync(ce => ce.StudentId == studentAttendance.StudentId && ce.CourseId == bulkAttendanceDto.CourseId && ce.Status == EnrollmentStatus.Active);
-
-                if (enrollment == null)
+                foreach (var studentAttendance in bulkAttendanceDto.StudentAttendances)
                 {
-                    continue; // Skip students not enrolled
-                }
+                    // Check if student exists and is enrolled in the course
+                    var enrollment = await _context.CourseEnrollments
+                        .Include(ce => ce.Student)
+                        .ThenInclude(s => s.User)
+                        .FirstOrDefaultAsync(ce => ce.StudentId == studentAttendance.StudentId && ce.CourseId == bulkAttendanceDto.CourseId && ce.Status == EnrollmentStatus.Active);
 
-                // Check if attendance already exists for this date (using UTC date)
-                var existingAttendance = await _context.Attendances
-                    .FirstOrDefaultAsync(a => a.StudentId == studentAttendance.StudentId && a.CourseId == bulkAttendanceDto.CourseId && a.Date.Date == utcDate.Date);
+                    if (enrollment == null)
+                    {
+                        continue; // Skip students not enrolled
+                    }
 
-                if (existingAttendance != null)
-                {
-                    // Update existing attendance
-                    existingAttendance.Status = studentAttendance.Status;
-                    existingAttendance.Notes = studentAttendance.Notes;
-                }
-                else
-                {
-                    // Create new attendance record (using UTC date)
-                    var attendance = new Attendance
+                    // Check if attendance already exists for this date (using UTC date)
+                    var existingAttendance = await _context.Attendances
+                        .FirstOrDefaultAsync(a => a.StudentId == studentAttendance.StudentId && a.CourseId == bulkAttendanceDto.CourseId && a.Date.Date == utcDate.Date);
+
+                    if (existingAttendance != null)
+                    {
+                        // Update existing attendance
+                        existingAttendance.Status = studentAttendance.Status;
+                        existingAttendance.Notes = studentAttendance.Notes;
+                    }
+                    else
+                    {
+                        // Create new attendance record (using UTC date)
+                        var attendance = new Attendance
+                        {
+                            StudentId = studentAttendance.StudentId,
+                            CourseId = bulkAttendanceDto.CourseId,
+                            TeacherId = teacher.Id,
+                            Date = utcDate,
+                            Status = studentAttendance.Status,
+                            Notes = studentAttendance.Notes,
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        attendanceRecords.Add(attendance);
+                    }
+
+                    attendanceDtos.Add(new AttendanceDto
                     {
                         StudentId = studentAttendance.StudentId,
+                        StudentName = $"{enrollment.Student.User.FirstName} {enrollment.Student.User.LastName}",
+                        StudentNumber = enrollment.Student.StudentNumber,
                         CourseId = bulkAttendanceDto.CourseId,
+                        CourseName = course.CourseName,
+                        CourseCode = course.CourseCode,
                         TeacherId = teacher.Id,
+                        TeacherName = $"{teacher.User.FirstName} {teacher.User.LastName}",
                         Date = utcDate,
                         Status = studentAttendance.Status,
                         Notes = studentAttendance.Notes,
                         CreatedAt = DateTime.UtcNow
-                    };
-
-                    attendanceRecords.Add(attendance);
+                    });
                 }
 
-                attendanceDtos.Add(new AttendanceDto
+                if (attendanceRecords.Any())
                 {
-                    StudentId = studentAttendance.StudentId,
-                    StudentName = $"{enrollment.Student.User.FirstName} {enrollment.Student.User.LastName}",
-                    StudentNumber = enrollment.Student.StudentNumber,
-                    CourseId = bulkAttendanceDto.CourseId,
-                    CourseName = course.CourseName,
-                    CourseCode = course.CourseCode,
-                    TeacherId = teacher.Id,
-                    TeacherName = $"{teacher.User.FirstName} {teacher.User.LastName}",
-                    Date = utcDate,
-                    Status = studentAttendance.Status,
-                    Notes = studentAttendance.Notes,
-                    CreatedAt = DateTime.UtcNow
-                });
-            }
-
-            if (attendanceRecords.Any())
-            {
-                _context.Attendances.AddRange(attendanceRecords);
-            }
+                    _context.Attendances.AddRange(attendanceRecords);
+                }
 
                 Console.WriteLine($"DEBUG Backend: Saving {attendanceRecords.Count} new attendance records");
                 await _context.SaveChangesAsync();
@@ -449,7 +449,7 @@ namespace StudentAutomation.Backend.Controllers
                     Console.WriteLine("DEBUG Backend: Student not found by UserId, trying email lookup");
                     var userEmail = User.FindFirst(ClaimTypes.Email)?.Value;
                     Console.WriteLine($"DEBUG Backend: User email: {userEmail}");
-                    
+
                     if (!string.IsNullOrEmpty(userEmail))
                     {
                         student = await _context.Students

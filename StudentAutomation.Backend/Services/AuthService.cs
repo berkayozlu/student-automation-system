@@ -77,7 +77,7 @@ namespace StudentAutomation.Backend.Services
                 studentNumber = $"STU{year}{random}";
             }
             while (await _context.Students.AnyAsync(s => s.StudentNumber == studentNumber));
-            
+
             return studentNumber;
         }
 
@@ -224,7 +224,7 @@ namespace StudentAutomation.Backend.Services
         private async Task<UserDto> MapToUserDto(ApplicationUser user)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            
+
             var userDto = new UserDto
             {
                 Id = user.Id,

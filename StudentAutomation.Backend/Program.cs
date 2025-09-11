@@ -16,7 +16,7 @@ builder.Services.AddSwaggerGen();
 
 // Database configuration
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), 
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
         o => o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
 
 // Identity configuration

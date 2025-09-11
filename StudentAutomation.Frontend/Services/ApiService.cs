@@ -110,10 +110,10 @@ namespace StudentAutomation.Frontend.Services
             {
                 Console.WriteLine($"DEBUG: Adding {studentIds.Count} students to course {courseId}");
                 await SetAuthorizationHeaderAsync();
-                
+
                 var enrollmentData = new { StudentIds = studentIds };
                 var response = await _httpClient.PostAsJsonAsync($"api/courses/{courseId}/add-students", enrollmentData);
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     Console.WriteLine($"DEBUG: Successfully added students to course {courseId}");
@@ -200,7 +200,7 @@ namespace StudentAutomation.Frontend.Services
             {
                 var response = await _httpClient.PostAsJsonAsync("api/teachers", createTeacherDto);
                 var responseContent = await response.Content.ReadAsStringAsync();
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
@@ -255,7 +255,7 @@ namespace StudentAutomation.Frontend.Services
             {
                 var response = await _httpClient.PostAsJsonAsync("api/courses", createCourseDto);
                 var responseContent = await response.Content.ReadAsStringAsync();
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
@@ -362,10 +362,10 @@ namespace StudentAutomation.Frontend.Services
             {
                 Console.WriteLine($"DEBUG: Creating grade for student {createGradeDto.StudentId} in course {createGradeDto.CourseId}");
                 var response = await _httpClient.PostAsJsonAsync("api/grades", createGradeDto);
-                
+
                 Console.WriteLine($"DEBUG: CreateGrade response status: {response.StatusCode}");
                 Console.WriteLine($"DEBUG: CreateGrade response success: {response.IsSuccessStatusCode}");
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     var result = await response.Content.ReadFromJsonAsync<GradeDto>();
@@ -437,10 +437,10 @@ namespace StudentAutomation.Frontend.Services
             {
                 Console.WriteLine($"DEBUG: Creating attendance for student {createAttendanceDto.StudentId} in course {createAttendanceDto.CourseId}");
                 var response = await _httpClient.PostAsJsonAsync("api/attendance", createAttendanceDto);
-                
+
                 Console.WriteLine($"DEBUG: CreateAttendance response status: {response.StatusCode}");
                 Console.WriteLine($"DEBUG: CreateAttendance response success: {response.IsSuccessStatusCode}");
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     var result = await response.Content.ReadFromJsonAsync<AttendanceDto>();
@@ -468,9 +468,9 @@ namespace StudentAutomation.Frontend.Services
             {
                 Console.WriteLine($"DEBUG: Creating bulk attendance for course {bulkAttendanceDto.CourseId} on {bulkAttendanceDto.Date:yyyy-MM-dd}");
                 var response = await _httpClient.PostAsJsonAsync("api/attendance/bulk", bulkAttendanceDto);
-                
+
                 Console.WriteLine($"DEBUG: CreateBulkAttendance response status: {response.StatusCode}");
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     var result = await response.Content.ReadFromJsonAsync<List<AttendanceDto>>();
@@ -498,9 +498,9 @@ namespace StudentAutomation.Frontend.Services
             {
                 Console.WriteLine("DEBUG: Getting my attendance records");
                 var response = await _httpClient.GetAsync("api/attendance/my-attendance");
-                
+
                 Console.WriteLine($"DEBUG: GetMyAttendance response status: {response.StatusCode}");
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     var result = await response.Content.ReadFromJsonAsync<List<AttendanceDto>>();

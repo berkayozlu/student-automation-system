@@ -196,7 +196,7 @@ namespace StudentAutomation.Backend.Controllers
             try
             {
                 Console.WriteLine($"DEBUG Backend: Getting students for course {id}");
-                
+
                 var course = await _context.Courses
                     .Include(c => c.Teacher)
                     .ThenInclude(t => t.User)
@@ -211,12 +211,12 @@ namespace StudentAutomation.Backend.Controllers
                 // Check if user is authorized to view this course's students
                 var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-                
+
                 if (userRole != "Admin")
                 {
                     var teacher = await _context.Teachers
                         .FirstOrDefaultAsync(t => t.UserId == currentUserId);
-                    
+
                     if (teacher == null || course.TeacherId != teacher.Id)
                     {
                         Console.WriteLine($"DEBUG Backend: User not authorized to view students for course {id}");
@@ -422,11 +422,11 @@ namespace StudentAutomation.Backend.Controllers
                 var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var userEmail = User.FindFirst(ClaimTypes.Email)?.Value;
                 var userName = User.FindFirst(ClaimTypes.Name)?.Value;
-                
+
                 Console.WriteLine($"DEBUG Backend: Current user ID: {currentUserId}");
                 Console.WriteLine($"DEBUG Backend: Current user email: {userEmail}");
                 Console.WriteLine($"DEBUG Backend: Current user name: {userName}");
-                
+
                 if (string.IsNullOrEmpty(currentUserId))
                 {
                     Console.WriteLine("DEBUG Backend: User ID is null or empty");
@@ -453,14 +453,14 @@ namespace StudentAutomation.Backend.Controllers
                 else
                 {
                     Console.WriteLine("DEBUG Backend: No teacher found with current user ID, checking by email...");
-                    
+
                     // Try to find teacher by email as backup
                     if (!string.IsNullOrEmpty(userEmail))
                     {
                         teacher = await _context.Teachers
                             .Include(t => t.User)
                             .FirstOrDefaultAsync(t => t.User.Email == userEmail);
-                        
+
                         if (teacher != null)
                         {
                             Console.WriteLine($"DEBUG Backend: Found teacher by email - Teacher ID: {teacher.Id}");
@@ -523,7 +523,7 @@ namespace StudentAutomation.Backend.Controllers
             try
             {
                 Console.WriteLine($"DEBUG Backend: Getting available students for course {courseId}");
-                
+
                 var course = await _context.Courses
                     .Include(c => c.Teacher)
                     .FirstOrDefaultAsync(c => c.Id == courseId);
@@ -537,12 +537,12 @@ namespace StudentAutomation.Backend.Controllers
                 // Check if user is authorized to manage this course
                 var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-                
+
                 if (userRole != "Admin")
                 {
                     var teacher = await _context.Teachers
                         .FirstOrDefaultAsync(t => t.UserId == currentUserId);
-                    
+
                     if (teacher == null || course.TeacherId != teacher.Id)
                     {
                         Console.WriteLine($"DEBUG Backend: User not authorized to manage course {courseId}");
@@ -592,7 +592,7 @@ namespace StudentAutomation.Backend.Controllers
             try
             {
                 Console.WriteLine($"DEBUG Backend: Adding {request.StudentIds.Count} students to course {courseId}");
-                
+
                 var course = await _context.Courses
                     .Include(c => c.Teacher)
                     .FirstOrDefaultAsync(c => c.Id == courseId);
@@ -606,12 +606,12 @@ namespace StudentAutomation.Backend.Controllers
                 // Check if user is authorized to manage this course
                 var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-                
+
                 if (userRole != "Admin")
                 {
                     var teacher = await _context.Teachers
                         .FirstOrDefaultAsync(t => t.UserId == currentUserId);
-                    
+
                     if (teacher == null || course.TeacherId != teacher.Id)
                     {
                         Console.WriteLine($"DEBUG Backend: User not authorized to manage course {courseId}");
