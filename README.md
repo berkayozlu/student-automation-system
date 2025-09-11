@@ -68,6 +68,7 @@ docker-compose up -d
 
 ### Test Öğretmeni
 Kayıt sayfasından "Teacher" rolü seçerek oluşturabilirsiniz.
+Default Şifre: Teacher123!
 
 ### Test Öğrencisi
 Kayıt sayfasından "Student" rolü seçerek oluşturabilirsiniz.
